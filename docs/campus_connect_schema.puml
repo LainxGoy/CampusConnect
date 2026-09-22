@@ -1,0 +1,114 @@
+@startuml CampusConnect_ERD
+!theme plain
+skinparam linetype ortho
+skinparam roundcorner 6
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+
+entity "roles" as roles {
+  * **id** : bigint <<PK, generated always>>
+  --
+  * **nombre** : varchar(50) <<UK>> [estudiante, administrativo, tecnico]
+  * **etiqueta** : varchar(100)
+  descripcion : text
+  created_at : timestamp(0) with time zone
+  updated_at : timestamp(0) with time zone
+}
+
+entity "users" as users {
+  * **id** : bigint <<PK, generated always>>
+  --
+  role_id : bigint <<FK -> roles.id>>
+  * **name** : varchar(255)
+  * **email** : varchar(255) <<UK>>
+  codigo_estudiantil : varchar(50) <<Index>>
+  telefono : varchar(50)
+  is_active : boolean <<default true>>
+  password : varchar(255)
+  remember_token : varchar(100)
+  created_at : timestamp(0) with time zone
+  updated_at : timestamp(0) with time zone
+}
+
+entity "recursos" as recursos {
+  * **id** : bigint <<PK, generated always>>
+  --
+  * **codigo** : varchar(50) <<UK, Index>>
+  * **nombre** : varchar(255)
+  * **tipo** : varchar(50) <<Index>> [infraestructura, equipamiento]
+  categoria : varchar(100)
+  * **ubicacion** : varchar(255)
+  * **estado** : varchar(50) <<Index>> [operativo, mantenimiento, fuera_servicio]
+  descripcion : text
+  created_at : timestamp(0) with time zone
+  updated_at : timestamp(0) with time zone
+}
+
+entity "solicitudes" as solicitudes {
+  * **id** : bigint <<PK, generated always>>
+  --
+  * **codigo_ticket** : varchar(50) <<UK, Index>>
+  * **titulo** : varchar(255)
+  * **descripcion** : text
+  * **tipo** : varchar(50) <<Index>> [mantenimiento, soporte, infraestructura, equipamiento]
+  * **prioridad** : varchar(50) <<Index>> [baja, media, alta, urgente]
+  * **estado** : varchar(50) <<Index>> [pendiente, en_revision, en_proceso, resuelto, cancelado]
+  * **user_id** : bigint <<FK -> users.id, Index>>
+  responsable_id : bigint <<FK -> users.id, Index, Nullable>>
+  recurso_id : bigint <<FK -> recursos.id, Index, Nullable>>
+  fecha_resolucion : timestamp(0) with time zone
+  created_at : timestamp(0) with time zone
+  updated_at : timestamp(0) with time zone
+}
+
+entity "historial_solicitudes" as historial_solicitudes {
+  * **id** : bigint <<PK, generated always>>
+  --
+  * **solicitud_id** : bigint <<FK -> solicitudes.id, ON DELETE CASCADE>>
+  user_id : bigint <<FK -> users.id, ON DELETE SET NULL>>
+  estado_anterior : varchar(50)
+  * **estado_nuevo** : varchar(50)
+  nota : text
+  created_at : timestamp(0) with time zone
+  updated_at : timestamp(0) with time zone
+}
+
+entity "comentarios" as comentarios {
+  * **id** : bigint <<PK, generated always>>
+  --
+  * **solicitud_id** : bigint <<FK -> solicitudes.id, ON DELETE CASCADE>>
+  * **user_id** : bigint <<FK -> users.id, ON DELETE CASCADE>>
+  * **mensaje** : text
+  * **es_interno** : boolean <<default false>>
+  created_at : timestamp(0) with time zone
+  updated_at : timestamp(0) with time zone
+}
+
+entity "evidencias" as evidencias {
+  * **id** : bigint <<PK, generated always>>
+  --
+  * **solicitud_id** : bigint <<FK -> solicitudes.id, ON DELETE CASCADE>>
+  user_id : bigint <<FK -> users.id, ON DELETE SET NULL>>
+  * **nombre_original** : varchar(255)
+  * **ruta_archivo** : varchar(500)
+  * **mime_type** : varchar(100)
+  * **tamanio_bytes** : bigint
+  created_at : timestamp(0) with time zone
+  updated_at : timestamp(0) with time zone
+}
+
+' Relaciones
+roles ||--o{ users : "1:N (asigna rol)"
+users ||--o{ solicitudes : "1:N (crea solicitudes)"
+users ||--o{ solicitudes : "0..1:N (atiende como técnico)"
+recursos ||--o{ solicitudes : "0..1:N (asociado a ticket)"
+
+solicitudes ||--|{ historial_solicitudes : "1:N (trazabilidad de estados)"
+solicitudes ||--o{ comentarios : "1:N (hilo de discusión)"
+solicitudes ||--o{ evidencias : "1:N (archivos adjuntos)"
+
+users ||--o{ historial_solicitudes : "1:N (autor del cambio)"
+users ||--o{ comentarios : "1:N (autor del mensaje)"
+users ||--o{ evidencias : "1:N (subido por)"
+
+@enduml
